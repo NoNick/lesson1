@@ -13,12 +13,15 @@ import java.util.Random;
  * Created by thevery on 11/09/14.
  */
 class WhirlView extends SurfaceView implements Runnable {
-    int [][] field, field2, swapMatrix;
+    int[] field;
+    int[] field2;
+    int[] swapMatrix;
     int width = 240;
     int height = 320;
     float scaleX = 1, scaleY = 1;
     final int MAX_COLOR = 10;
-    int[] color, palette = {0xFFFF0000, 0xFF800000, 0xFF808000, 0xFF008000, 0xFF00FF00, 0xFF008080, 0xFF0000FF, 0xFF000080, 0xFF800080, 0xFFFFFFFF};
+    int[] color;
+    int[] palette = {0xFFFF0000, 0xFF800000, 0xFF808000, 0xFF008000, 0xFF00FF00, 0xFF008080, 0xFF0000FF, 0xFF000080, 0xFF800080, 0xFFFFFFFF};
     SurfaceHolder holder;
     Thread thread = null;
     volatile boolean running = false;
@@ -64,13 +67,13 @@ class WhirlView extends SurfaceView implements Runnable {
     }
 
     void initField() {
-        field = new int[width][height];
-        field2 = new int[width][height];
+        field = new int[width * height];
+        field2 = new int[width * height];
         color = new int[width * height];
         Random rand = new Random();
         for (int x=0; x<width; x++) {
             for (int y=0; y<height; y++) {
-                field[x][y] = rand.nextInt(MAX_COLOR);
+                field[x + y * width] = rand.nextInt(MAX_COLOR);
             }
         }
     }
@@ -79,8 +82,8 @@ class WhirlView extends SurfaceView implements Runnable {
         for (int x=0; x<width; x++) {
             for (int y=0; y<height; y++) {
 
-                field2[x][y] = field[x][y];
-                int cellColor = (field[x][y]+1);
+                field2[x + y * width] = field[x + y * width];
+                int cellColor = (field[x + y * width] + 1);
                 if (cellColor >= MAX_COLOR)
                     cellColor -= MAX_COLOR;
 
@@ -97,8 +100,8 @@ class WhirlView extends SurfaceView implements Runnable {
                             y2 += width;
                         if (y2 >= height)
                             y2 -= height;
-                        if (cellColor == field[x2][y2]) {
-                            field2[x][y] = field[x2][y2];
+                        if (cellColor == field[x2 + y2 * width]) {
+                            field2[x + y * width] = field[x2 + y2 * width];
                             break discoloration;
                         }
                     }
@@ -112,10 +115,8 @@ class WhirlView extends SurfaceView implements Runnable {
 
     @Override
     public void onDraw(Canvas canvas) {
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                color[y * width + x] = palette[field[x][y]];
-            }
+        for (int i = 0; i < height * width; i++) {
+            color[i] = palette[field[i]];
         }
 
         canvas.scale(scaleX, scaleY);
