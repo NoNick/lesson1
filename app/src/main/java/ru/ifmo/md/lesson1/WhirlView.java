@@ -26,6 +26,8 @@ class WhirlView extends SurfaceView implements Runnable {
     Thread thread = null;
     volatile boolean running = false;
     Paint paint = new Paint();
+    private static final int nThreads = 4;
+    Thread[] t = new Thread[nThreads];
 
     public WhirlView(Context context) {
         super(context);
@@ -50,7 +52,11 @@ class WhirlView extends SurfaceView implements Runnable {
             if (holder.getSurface().isValid()) {
                 long startTime = System.nanoTime();
                 Canvas canvas = holder.lockCanvas();
-                updateField();
+                try {
+                    updateField();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 onDraw(canvas);
                 holder.unlockCanvasAndPost(canvas);
                 long finishTime = System.nanoTime();
@@ -78,36 +84,55 @@ class WhirlView extends SurfaceView implements Runnable {
         }
     }
 
-    void updateField() {
-        for (int x=0; x<width; x++) {
-            for (int y=0; y<height; y++) {
+    void updateField() throws InterruptedException {
+        final int diffX[] = {0, 1, 0, 1};
+        final int diffY[] = {0, 0, 1, 1};
 
-                field2[x + y * width] = field[x + y * width];
-                int cellColor = (field[x + y * width] + 1);
-                if (cellColor >= MAX_COLOR)
-                    cellColor -= MAX_COLOR;
+        for (int i = 0; i < nThreads; i++) {
+            final int finalI = i;
+            t[i] = new Thread() {
+                @Override
+                public void run() {
+                    for (int x = diffX[finalI] * width / 2; x < (diffX[finalI] + 1) * width / 2; x++) {
+                        for (int y = diffY[finalI] * height / 2; y < (diffY[finalI] + 1) * height / 2; y++) {
 
-                discoloration:
-                for (int dx=-1; dx<=1; dx++) {
-                    for (int dy=-1; dy<=1; dy++) {
-                        int x2 = x + dx;
-                        if (x2 < 0)
-                            x2 += width;
-                        if (x2 >= width)
-                            x2 -= width;
-                        int y2 = y + dy;
-                        if (y2 < 0)
-                            y2 += width;
-                        if (y2 >= height)
-                            y2 -= height;
-                        if (cellColor == field[x2 + y2 * width]) {
-                            field2[x + y * width] = field[x2 + y2 * width];
-                            break discoloration;
+                            field2[x + y * width] = field[x + y * width];
+                            int cellColor = (field[x + y * width] + 1);
+                            if (cellColor >= MAX_COLOR)
+                                cellColor -= MAX_COLOR;
+
+                            discoloration:
+                            for (int dx = -1; dx <= 1; dx++) {
+                                for (int dy = -1; dy <= 1; dy++) {
+                                    int x2 = x + dx;
+                                    if (x2 < 0)
+                                        x2 += width;
+                                    if (x2 >= width)
+                                        x2 -= width;
+                                    int y2 = y + dy;
+                                    if (y2 < 0)
+                                        y2 += width;
+                                    if (y2 >= height)
+                                        y2 -= height;
+                                    if (cellColor == field[x2 + y2 * width]) {
+                                        field2[x + y * width] = field[x2 + y2 * width];
+                                        break discoloration;
+                                    }
+                                }
+                            }
                         }
                     }
                 }
-            }
+            };
         }
+
+        for (int i = 0; i < nThreads; i++) {
+            t[i].start();
+        }
+        for (int i = 0; i < nThreads; i++) {
+            t[i].join();
+        }
+
         swapMatrix = field;
         field = field2;
         field2 = swapMatrix;
